@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, flash
+from flask import Blueprint, render_template, request, flash, redirect, url_for
+from . import db
 from .models import User
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -29,11 +30,23 @@ def register():
         elif len(password) < 7:
             flash('Password must be at least 6 characters', category='error')
         else:
-            new_user = User(email=email, fullname=fullname, password=password)
+            new_user = User(email=email, fullname=fullname, password=generate_password_hash(password, method='pbkdf2:sha256'))
+            db.session.add(new_user)
+            db.session.commit()
             flash('Account created!', category='success')
+            return redirect(url_for('views.home'))
 
     return render_template('register.html')
 
 @auth.route('/logout')
 def logout():
     return "<h1>Logout Page</h1>"
+
+@auth.route('/delete_user/<email>')
+def delete_user(email):
+    user = User.query.filter_by(email=email).first()
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return f"User {email} deleted."
+    return "User not found."
